@@ -6,12 +6,12 @@ import (
 	"unsafe"
 )
 
-func hashCaller(callerStack []uintptr) string {
-	pcHash := make([]byte, 0, len(callerStack)*4)
+func encodeCaller(callerStack []uintptr) string {
+	bytes := make([]byte, 0, len(callerStack)*4)
 	for _, caller := range callerStack {
-		pcHash = append(pcHash, uIntPtrToBytes(caller)...)
+		bytes = append(bytes, uIntPtrToBytes(caller)...)
 	}
-	return string(pcHash)
+	return string(bytes)
 }
 
 func uIntPtrToBytes(u uintptr) []byte {

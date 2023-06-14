@@ -89,4 +89,9 @@ func (r *Routine) For(start, end int, action func(i int)) {
 		action(i)
 		popIndex()
 	}
+
+	if r.isPrevExecuted(caller) {
+		r.addExecution(caller)
+		r.markAsExecuted(caller)
+	}
 }

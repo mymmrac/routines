@@ -81,7 +81,7 @@ func (r *Routine) executionTimer(caller string, duration time.Duration) <-chan t
 
 func (r *Routine) pushToStack(caller uintptr) (string, func()) {
 	r.executionStack = append(r.executionStack, caller)
-	return hashCaller(r.executionStack), func() {
+	return encodeCaller(r.executionStack), func() {
 		r.executionStack = r.executionStack[:len(r.executionStack)-1]
 	}
 }
