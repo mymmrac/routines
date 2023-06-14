@@ -45,9 +45,4 @@ func main() {
 		r.End()
 	}
 	fmt.Println("Loops", loops)
-
-	// fmt.Println()
-	// fmt.Println("Execution sequence:")
-	// fmt.Println(r.ExecutionSequenceRaw())
-	// fmt.Println(strings.Join(r.ExecutionSequence(), "\n"))
 }
