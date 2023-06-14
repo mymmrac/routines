@@ -118,3 +118,9 @@ func (r *Routine) Loop(start, end int, action func(i int)) {
 		r.markAsExecuted(caller)
 	}
 }
+
+func (r *Routine) Repeat(n int, action func()) {
+	r.Loop(0, n, func(_ int) {
+		action()
+	})
+}
