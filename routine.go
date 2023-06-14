@@ -9,19 +9,27 @@ import (
 type Routine struct {
 	started           bool
 	completed         bool
-	executionSequence []uintptr
-	executed          map[uintptr]struct{}
-	timers            map[uintptr]<-chan time.Time
+	executionStack    []uintptr
+	executionSequence []string
+	executed          map[string]struct{}
+	timers            map[string]<-chan time.Time
 	pc                []uintptr
 }
 
 func NewRoutine() *Routine {
 	return &Routine{
-		executionSequence: make([]uintptr, 0),
-		executed:          make(map[uintptr]struct{}),
-		timers:            make(map[uintptr]<-chan time.Time),
+		executionStack:    make([]uintptr, 0),
+		executionSequence: make([]string, 0),
+		executed:          make(map[string]struct{}),
+		timers:            make(map[string]<-chan time.Time),
 		pc:                make([]uintptr, 1),
 	}
+}
+
+func StartRoutine() *Routine {
+	routine := NewRoutine()
+	routine.Start()
+	return routine
 }
 
 func (r *Routine) Started() bool {
@@ -32,34 +40,6 @@ func (r *Routine) Completed() bool {
 	return r.completed
 }
 
-func (r *Routine) ExecutionSequenceRaw() []uintptr {
-	executions := make([]uintptr, len(r.executionSequence))
-	copy(executions, r.executionSequence)
-	return executions
-}
-
-func (r *Routine) ExecutionSequence() []string {
-	if len(r.executionSequence) == 0 {
-		return nil
-	}
-
-	executions := make([]string, 0, len(r.executionSequence))
-	frames := runtime.CallersFrames(r.executionSequence)
-	for {
-		frame, more := frames.Next()
-		if frame.PC == 0 {
-			continue
-		}
-		executions = append(executions, fmt.Sprintf("%s:%d", frame.File, frame.Line))
-
-		if !more {
-			break
-		}
-	}
-
-	return executions
-}
-
 func (r *Routine) caller() uintptr {
 	if runtime.Callers(3, r.pc) != 1 {
 		panic(fmt.Errorf("failed to get caller"))
@@ -68,15 +48,17 @@ func (r *Routine) caller() uintptr {
 	return r.pc[0]
 }
 
-func (r *Routine) isExecuted(caller uintptr) (executed bool) {
-	_, executed = r.executed[caller]
+func (r *Routine) isExecuted(callers string) (executed bool) {
+	_, executed = r.executed[callers]
 	return executed
 }
 
-func (r *Routine) isPrevExecuted(myCaller uintptr) bool {
-	for i, caller := range r.executionSequence {
+func (r *Routine) isPrevExecuted(myCaller string) bool {
+	for i := len(r.executionSequence) - 1; i >= 0; i-- {
+		caller := r.executionSequence[i]
+
 		if i == len(r.executionSequence)-1 && caller == myCaller {
-			return true
+			continue
 		}
 
 		if !r.isExecuted(caller) {
@@ -86,19 +68,21 @@ func (r *Routine) isPrevExecuted(myCaller uintptr) bool {
 	return true
 }
 
-func (r *Routine) addExecution(caller uintptr) {
-	if len(r.executionSequence) > 0 && r.executionSequence[len(r.executionSequence)-1] == caller {
-		return
+func (r *Routine) addExecution(caller string) {
+	for i := len(r.executionSequence) - 1; i >= 0; i-- {
+		if r.executionSequence[i] == caller {
+			return
+		}
 	}
 
 	r.executionSequence = append(r.executionSequence, caller)
 }
 
-func (r *Routine) markAsExecuted(caller uintptr) {
+func (r *Routine) markAsExecuted(caller string) {
 	r.executed[caller] = struct{}{}
 }
 
-func (r *Routine) executionTimer(caller uintptr, duration time.Duration) <-chan time.Time {
+func (r *Routine) executionTimer(caller string, duration time.Duration) <-chan time.Time {
 	if timer, found := r.timers[caller]; found {
 		return timer
 	}
@@ -109,12 +93,21 @@ func (r *Routine) executionTimer(caller uintptr, duration time.Duration) <-chan 
 	return timer
 }
 
+func (r *Routine) pushToStack(caller uintptr) (string, func()) {
+	r.executionStack = append(r.executionStack, caller)
+	return hashCaller(r.executionStack), func() {
+		r.executionStack = r.executionStack[:len(r.executionStack)-1]
+	}
+}
+
 func (r *Routine) Start() {
 	if r.started {
 		return
 	}
 
-	caller := r.caller()
+	caller, pop := r.pushToStack(r.caller())
+	defer pop()
+
 	if r.isExecuted(caller) {
 		return
 	}
@@ -132,7 +125,9 @@ func (r *Routine) End() {
 		return
 	}
 
-	caller := r.caller()
+	caller, pop := r.pushToStack(r.caller())
+	defer pop()
+
 	if r.isExecuted(caller) {
 		return
 	}
@@ -149,9 +144,10 @@ func (r *Routine) End() {
 func (r *Routine) Reset() {
 	r.started = false
 	r.completed = false
-	r.executionSequence = make([]uintptr, 0)
-	r.executed = make(map[uintptr]struct{})
-	r.timers = make(map[uintptr]<-chan time.Time)
+	r.executionStack = make([]uintptr, 0)
+	r.executionSequence = make([]string, 0)
+	r.executed = make(map[string]struct{})
+	r.timers = make(map[string]<-chan time.Time)
 }
 
 func (r *Routine) Restart() {
@@ -164,7 +160,9 @@ func (r *Routine) Do(action func()) {
 		return
 	}
 
-	caller := r.caller()
+	caller, pop := r.pushToStack(r.caller())
+	defer pop()
+
 	if r.isExecuted(caller) {
 		return
 	}
@@ -177,12 +175,39 @@ func (r *Routine) Do(action func()) {
 	action()
 }
 
+func (r *Routine) For(start, end int, action func(i int)) {
+	if !r.started {
+		return
+	}
+	if start > end {
+		return
+	}
+
+	caller, pop := r.pushToStack(r.caller())
+	defer pop()
+
+	if r.isExecuted(caller) {
+		return
+	}
+	if !r.isPrevExecuted(caller) {
+		return
+	}
+
+	for i := start; i < end; i++ {
+		_, popIndex := r.pushToStack(uintptr(i))
+		action(i)
+		popIndex()
+	}
+}
+
 func (r *Routine) WaitFor(duration time.Duration) {
 	if !r.started {
 		return
 	}
 
-	caller := r.caller()
+	caller, pop := r.pushToStack(r.caller())
+	defer pop()
+
 	if r.isExecuted(caller) {
 		return
 	}
@@ -204,7 +229,9 @@ func (r *Routine) WaitUntil(condition func() bool) {
 		return
 	}
 
-	caller := r.caller()
+	caller, pop := r.pushToStack(r.caller())
+	defer pop()
+
 	if r.isExecuted(caller) {
 		return
 	}
@@ -223,7 +250,9 @@ func (r *Routine) WaitUntilOrFor(condition func() bool, duration time.Duration) 
 		return
 	}
 
-	caller := r.caller()
+	caller, pop := r.pushToStack(r.caller())
+	defer pop()
+
 	if r.isExecuted(caller) {
 		return
 	}

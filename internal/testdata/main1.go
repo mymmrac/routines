@@ -28,7 +28,7 @@ func main() {
 			fmt.Println("Current iteration", loops)
 		})
 
-		r.WaitFor(time.Second)
+		r.WaitFor(time.Second * 2)
 
 		r.Do(func() {
 			fmt.Println("After", time.Now().Format(time.TimeOnly))
