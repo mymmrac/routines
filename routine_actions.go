@@ -61,9 +61,32 @@ func (r *Routine) Do(action func()) {
 		return
 	}
 	r.addExecution(caller)
-	r.markAsExecuted(caller) // TODO: Check nested do func
+	r.markAsExecuted(caller)
 
 	action()
+}
+
+func (r *Routine) Func(action func()) {
+	if !r.started {
+		return
+	}
+
+	caller, pop := r.pushToStack(r.caller())
+	defer pop()
+
+	if r.isExecuted(caller) {
+		return
+	}
+	if !r.isPrevExecutedTo(r.executionSequenceIndex(caller)) {
+		return
+	}
+
+	action()
+
+	if r.isPrevExecuted(caller) {
+		r.addExecution(caller)
+		r.markAsExecuted(caller)
+	}
 }
 
 func (r *Routine) Loop(start, end int, action func(i int)) {
