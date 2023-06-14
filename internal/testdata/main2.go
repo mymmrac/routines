@@ -18,7 +18,7 @@ func main() {
 			fmt.Println("Start")
 		})
 
-		r.For(0, 3, func(i int) {
+		r.Loop(0, 3, func(i int) {
 			r.Do(func() {
 				fmt.Println("Iteration", i+1, "at", time.Now().Format(time.TimeOnly))
 			})

@@ -20,13 +20,13 @@ func main() {
 			fmt.Println("Start")
 		})
 
-		r.For(0, 3, func(i int) {
+		r.Loop(0, 3, func(i int) {
 			r.Do(func() {
 				fmt.Println("Iteration", i+1, "at", time.Now().Format(timeFormat))
 			})
 			r.WaitFor(time.Second / 2)
 
-			r.For(0, 2, func(j int) {
+			r.Loop(0, 2, func(j int) {
 				r.Do(func() {
 					fmt.Println("Iteration", i+1, ":", j+1, "at", time.Now().Format(timeFormat))
 				})

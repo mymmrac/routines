@@ -34,7 +34,7 @@ func main() {
 			fmt.Println("After", time.Now().Format(time.TimeOnly))
 		})
 
-		r.WaitUntilOrFor(func() bool {
+		r.WaitUntilOrTimeout(func() bool {
 			return true
 		}, time.Second)
 

@@ -61,12 +61,12 @@ func (r *Routine) Do(action func()) {
 		return
 	}
 	r.addExecution(caller)
-	r.markAsExecuted(caller)
+	r.markAsExecuted(caller) // TODO: Check nested do func
 
 	action()
 }
 
-func (r *Routine) For(start, end int, action func(i int)) {
+func (r *Routine) Loop(start, end int, action func(i int)) {
 	if !r.started {
 		return
 	}
