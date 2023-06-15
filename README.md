@@ -1,5 +1,9 @@
 # :recycle: Routines
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/mymmrac/routines#section-readme.svg)](https://pkg.go.dev/github.com/mymmrac/routines)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/mymmrac/routines?logo=go)](go.mod)
+[![Go Report](https://img.shields.io/badge/go%20report-A+-brightgreen.svg?style=flat)](https://goreportcard.com/report/github.com/mymmrac/routines)
+
 Simple way to write blocking operations in non-blocking functions/loops without concurrency and with no dependencies.
 
 ```shell
