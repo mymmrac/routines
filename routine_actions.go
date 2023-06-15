@@ -93,9 +93,6 @@ func (r *Routine) Loop(start, end int, action func(i int)) {
 	if !r.started {
 		return
 	}
-	if start > end {
-		return
-	}
 
 	caller, pop := r.pushToStack(r.caller())
 	defer pop()
@@ -120,7 +117,28 @@ func (r *Routine) Loop(start, end int, action func(i int)) {
 }
 
 func (r *Routine) Repeat(n int, action func()) {
-	r.Loop(0, n, func(_ int) {
+	if !r.started {
+		return
+	}
+
+	caller, pop := r.pushToStack(r.caller())
+	defer pop()
+
+	if r.isExecuted(caller) {
+		return
+	}
+	if !r.isPrevExecutedTo(r.executionSequenceIndex(caller)) {
+		return
+	}
+
+	for i := 0; i < n; i++ {
+		_, popIndex := r.pushToStack(uintptr(i))
 		action()
-	})
+		popIndex()
+	}
+
+	if r.isPrevExecuted(caller) {
+		r.addExecution(caller)
+		r.markAsExecuted(caller)
+	}
 }
