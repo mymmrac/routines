@@ -20,13 +20,19 @@ func main() {
 			fmt.Println("Before")
 		})
 
+		r.WaitFor(time.Millisecond)
+
 		r.Do(func() {
 			doStuff(r)
 		})
 
+		r.WaitFor(time.Millisecond)
+
 		r.Do(func() {
 			fmt.Println("After")
 		})
+
+		r.WaitFor(time.Millisecond)
 
 		r.Do(func() {
 			doStuff(r)
