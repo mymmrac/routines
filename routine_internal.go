@@ -7,7 +7,7 @@ import (
 )
 
 func (r *Routine) caller() uintptr {
-	if runtime.Callers(3, r.pc) != 1 {
+	if runtime.Callers(3, r.pc[:]) != 1 {
 		panic(fmt.Errorf("failed to get caller"))
 	}
 

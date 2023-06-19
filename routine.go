@@ -10,12 +10,12 @@ type Routine struct {
 	executionSequence []string
 	executed          map[string]struct{}
 	timers            map[string]<-chan time.Time
-	pc                []uintptr
+	pc                [1]uintptr
 }
 
 func NewRoutine() *Routine {
 	routine := &Routine{
-		pc: make([]uintptr, 1),
+		pc: [1]uintptr{},
 	}
 	routine.Reset()
 	return routine
